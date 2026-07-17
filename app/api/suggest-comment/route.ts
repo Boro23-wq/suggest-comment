@@ -5,6 +5,17 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+export const ALLOWED_MODELS = [
+  "gpt-4o-mini",
+  "gpt-4.1-mini",
+  "gpt-5-mini",
+  "gpt-5.4",
+] as const;
+
+type AllowedModel = (typeof ALLOWED_MODELS)[number];
+
+const DEFAULT_MODEL: AllowedModel = "gpt-4o-mini";
+
 interface SuggestCommentRequest {
   platform: "linkedin" | "x" | "tiktok";
   postText: string;
@@ -16,6 +27,7 @@ interface SuggestCommentRequest {
     | "share_resource"
     | "challenge_assumption";
   userContext?: string;
+  model?: string;
 }
 
 interface CommentSuggestion {
@@ -29,6 +41,7 @@ interface SuggestCommentResponse {
   suggestions: CommentSuggestion[];
   platform: string;
   postUrl?: string;
+  model: string;
   generatedAt: string;
   error?: string;
 }
@@ -167,12 +180,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let model: AllowedModel = DEFAULT_MODEL;
+    if (body.model) {
+      if (!ALLOWED_MODELS.includes(body.model as AllowedModel)) {
+        return NextResponse.json(
+          {
+            error: `Invalid model. Must be one of: ${ALLOWED_MODELS.join(", ")}`,
+          },
+          { status: 400 },
+        );
+      }
+      model = body.model as AllowedModel;
+    }
+
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(body);
 
     // Call OpenAI API
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Cost-optimized
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -205,6 +231,7 @@ export async function POST(request: NextRequest) {
     const result: SuggestCommentResponse = {
       suggestions,
       platform: body.platform,
+      model,
       postUrl: body.postUrl,
       generatedAt: new Date().toISOString(),
     };

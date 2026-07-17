@@ -14,6 +14,7 @@ interface CommentSuggestion {
 interface ApiResponse {
   suggestions: CommentSuggestion[];
   platform: string;
+  model: string;
   error?: string;
 }
 
@@ -26,6 +27,13 @@ const TONES = [
   { value: "founder", label: "Founder" },
   { value: "builder", label: "Builder" },
   { value: "question", label: "Question" },
+];
+
+const MODELS = [
+  { value: "gpt-4o-mini", label: "GPT-4o mini (fastest, cheapest)" },
+  { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+  { value: "gpt-5-mini", label: "GPT-5 mini" },
+  { value: "gpt-5.4", label: "GPT-5.4 (best quality)" },
 ];
 
 const GOALS = [
@@ -63,6 +71,7 @@ export default function CommentSuggester({ platform }: { platform: Platform }) {
   const [postText, setPostText] = useState("");
   const [tone, setTone] = useState("insightful");
   const [goal, setGoal] = useState("add_value");
+  const [model, setModel] = useState(MODELS[0].value);
   const [suggestions, setSuggestions] = useState<CommentSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +100,7 @@ export default function CommentSuggester({ platform }: { platform: Platform }) {
           postText,
           tone,
           goal,
+          model,
         }),
       });
 
@@ -205,6 +215,23 @@ export default function CommentSuggester({ platform }: { platform: Platform }) {
                 {GOALS.map((g) => (
                   <option key={g.value} value={g.value}>
                     {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#71717a]">
+                Model
+              </label>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="rounded-md border border-[#e4e4e7] bg-white px-3 py-2 text-sm text-[#0a0a0a] outline-none transition-colors focus:border-[#0a0a0a]"
+              >
+                {MODELS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
                   </option>
                 ))}
               </select>
