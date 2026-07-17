@@ -14,16 +14,26 @@ export const ALLOWED_MODELS = [
 
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
 
-const DEFAULT_MODEL: AllowedModel = "gpt-4o-mini";
+const DEFAULT_MODEL: AllowedModel = "gpt-5-mini";
 
-// Some models (e.g. gpt-5-mini) only support the default temperature (1).
-const FIXED_TEMPERATURE_MODELS = new Set<AllowedModel>(["gpt-5-mini"]);
+// Reasoning models (e.g. gpt-5-mini) only support the default temperature (1),
+// and spend part of their completion-token budget on internal reasoning before
+// writing any output — so they need a larger token budget and a low reasoning
+// effort, or a long system prompt can burn the whole budget on reasoning and
+// return an empty response.
+const REASONING_MODELS = new Set<AllowedModel>(["gpt-5-mini"]);
 
 interface SuggestCommentRequest {
   platform: "linkedin" | "x" | "tiktok";
   postText: string;
   postUrl?: string;
-  tone?: "technical" | "founder" | "builder" | "insightful" | "question";
+  tone?:
+    | "technical"
+    | "founder"
+    | "builder"
+    | "insightful"
+    | "question"
+    | "appreciative";
   goal?:
     | "add_value"
     | "ask_question"
@@ -35,7 +45,13 @@ interface SuggestCommentRequest {
 
 interface CommentSuggestion {
   text: string;
-  tone: "technical" | "founder" | "builder" | "insightful" | "question";
+  tone:
+    | "technical"
+    | "founder"
+    | "builder"
+    | "insightful"
+    | "question"
+    | "appreciative";
   structure: string;
   length: "short" | "medium" | "long";
 }
@@ -62,7 +78,7 @@ const buildSystemPrompt = (): string => {
 
 **Rules:**
 1. Sound like a real human joining a conversation, not a bot.
-2. Add value instead of repeating the post.
+2. Add value when it's natural to — but not every comment needs new insight. A short, genuine acknowledgment ("Thanks for sharing this." / "Really appreciate this.") is a valid response on its own, not a filler to avoid. Across a batch of suggestions, vary between insight-driven and simple appreciation so it doesn't read as "trying too hard" every time.
 3. Keep comments 1–4 sentences (vary length naturally).
 4. Rotate opening styles naturally:
    - "Really enjoyed this perspective."
@@ -90,6 +106,7 @@ const buildSystemPrompt = (): string => {
    - Nuanced trade-off observation
    - Quote-and-reframe (quote a short phrase, then reframe it)
    - Contrast framing ("it's not X, it's Y")
+   - Simple appreciation / acknowledgment (no added insight — just genuine recognition)
 6. Never use: "Great post!", "Totally agree", "100%", "🔥👏", generic praise
 6a. When possible, quote one exact short phrase from the post (in quotes) and react to it or reframe it — e.g. "'Time compression' is a great way to describe it." or "That line about conviction compounding really stood out."
 6b. Use contrast framing to reframe the post's point: "It's not X, it's Y" / "The real value isn't X — it's Y" / "X isn't a huge win by itself. The real opportunity is Y." Land on a generalized insight the post's specific example is one instance of, not just agreement.
@@ -104,6 +121,16 @@ const buildSystemPrompt = (): string => {
 - **Builder:** Hands-on experience, "here's what worked for us", practical insights
 - **Insightful:** Step back, connect dots, challenge assumptions, nuance
 - **Question:** Ask something that pushes the conversation forward
+- **Appreciative:** Just acknowledge and thank — do NOT add insight, advice, a question, or analysis. One short sentence, e.g. "Thanks for sharing this." / "Really appreciate you posting this." / "This resonated with me." Nothing else tacked on.
+
+**Voice calibration (avoid sounding like AI):**
+- Use contractions always: "it's" not "it is", "won't" not "will not", "we're" not "we are".
+- Prefer plain, direct phrasing over formal connective phrases like "which can lead to", "in order to", "it is important to note that".
+- It's fine to be a little loose/imperfect — real people don't write perfectly balanced sentences.
+- Example of the difference:
+  - Too AI: "AI can be a double-edged sword; it often automates repetitive tasks, which can lead to skill stagnation if we're not proactive in learning alongside it."
+  - Sounds human: "AI can honestly be a double-edged sword. It does all the thing it does but if we're not proactive in learning alongside it we will probably hit stagnation very soon."
+  - The human version uses contractions, casual connectors ("honestly", "but"), and skips the semicolon/formal clause structure.
 
 **What NOT to do:**
 - Don't use: "Great post!", "Couldn't agree more", "This 🔥👏"
@@ -199,6 +226,8 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(body);
 
+    const isReasoningModel = REASONING_MODELS.has(model);
+
     // Call OpenAI API
     const response = await openai.chat.completions.create({
       model,
@@ -206,8 +235,13 @@ export async function POST(request: NextRequest) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      ...(FIXED_TEMPERATURE_MODELS.has(model) ? {} : { temperature: 0.9 }), // Slightly higher for variety, where supported
-      max_completion_tokens: 1500,
+      ...(isReasoningModel ? {} : { temperature: 0.9 }), // Slightly higher for variety, where supported
+      // Reasoning models spend part of the budget on internal reasoning
+      // before writing output, so give them more room and keep reasoning
+      // effort low — otherwise a long prompt can exhaust the budget on
+      // reasoning alone and return an empty response.
+      max_completion_tokens: isReasoningModel ? 3000 : 1500,
+      ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
       response_format: { type: "json_object" }, // Ensures JSON output
     });
 
@@ -242,9 +276,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error("Error in suggest-comment API:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    const message =
+      error instanceof OpenAI.APIError
+        ? `OpenAI API error: ${error.message}`
+        : "Internal server error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

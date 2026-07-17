@@ -27,13 +27,14 @@ const TONES = [
   { value: "founder", label: "Founder" },
   { value: "builder", label: "Builder" },
   { value: "question", label: "Question" },
+  { value: "appreciative", label: "Appreciative (no insight, just thanks)" },
 ];
 
 const MODELS = [
+  { value: "gpt-5-mini", label: "GPT-5 mini (default)" },
+  { value: "gpt-5.4", label: "GPT-5.4 (best quality)" },
   { value: "gpt-4o-mini", label: "GPT-4o mini (fastest, cheapest)" },
   { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
-  { value: "gpt-5-mini", label: "GPT-5 mini" },
-  { value: "gpt-5.4", label: "GPT-5.4 (best quality)" },
 ];
 
 const GOALS = [
