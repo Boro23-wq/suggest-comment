@@ -1,5 +1,4 @@
-// pages/tiktok.tsx or app/tiktok/page.tsx
-// Simple web app for TikTok comment suggestions
+"use client";
 
 import React, { useState } from "react";
 
