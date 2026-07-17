@@ -16,8 +16,7 @@ interface ApiResponse {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://your-vercel-deployment.vercel.app";
+  process.env.NEXT_PUBLIC_API_URL || "https://suggest-comment.vercel.app";
 
 export default function TikTokCommentSuggester() {
   const [postText, setPostText] = useState("");
