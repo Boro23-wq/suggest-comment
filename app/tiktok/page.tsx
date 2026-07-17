@@ -18,6 +18,21 @@ interface ApiResponse {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://suggest-comment.vercel.app";
 
+const TONES = [
+  { value: "insightful", label: "Insightful" },
+  { value: "technical", label: "Technical" },
+  { value: "founder", label: "Founder" },
+  { value: "builder", label: "Builder" },
+  { value: "question", label: "Question" },
+];
+
+const GOALS = [
+  { value: "add_value", label: "Add value" },
+  { value: "ask_question", label: "Ask a question" },
+  { value: "share_resource", label: "Share a resource" },
+  { value: "challenge_assumption", label: "Challenge an assumption" },
+];
+
 export default function TikTokCommentSuggester() {
   const [postText, setPostText] = useState("");
   const [tone, setTone] = useState("insightful");
@@ -79,91 +94,126 @@ export default function TikTokCommentSuggester() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.wrapper}>
+    <div
+      style={{ colorScheme: "light" }}
+      className="min-h-screen bg-[#fafafa] text-[#111]"
+    >
+      <div className="mx-auto max-w-2xl px-6 py-16">
         {/* Header */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>✨ TikTok Comment Suggester</h1>
-          <p style={styles.subtitle}>
-            Paste a caption, get AI-powered suggestions. Then copy and comment
+        <div className="mb-10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#e4e4e7] bg-white px-3 py-1 text-xs font-medium text-[#71717a] shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#00d4a0]" />
+            TikTok
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[#0a0a0a]">
+            Comment Suggester
+          </h1>
+          <p className="mt-1.5 text-sm leading-relaxed text-[#71717a]">
+            Paste a caption, get AI-powered suggestions. Copy and post
             manually.
           </p>
         </div>
 
-        {/* Input Section */}
-        <div style={styles.section}>
-          <label style={styles.label}>TikTok Caption or Post Text</label>
-          <textarea
-            value={postText}
-            onChange={(e) => setPostText(e.target.value)}
-            placeholder="Paste the TikTok caption or video transcript here..."
-            style={styles.textarea}
-          />
-        </div>
-
-        {/* Controls */}
-        <div style={styles.controls}>
-          <div style={styles.controlGroup}>
-            <label style={styles.label}>Tone</label>
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value)}
-              style={styles.select}
-            >
-              <option value="insightful">Insightful</option>
-              <option value="technical">Technical</option>
-              <option value="founder">Founder</option>
-              <option value="builder">Builder</option>
-              <option value="question">Question</option>
-            </select>
+        {/* Card */}
+        <div className="rounded-xl border border-[#eaeaea] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+          {/* Input */}
+          <div className="border-b border-[#eaeaea] p-5">
+            <label className="mb-2 block text-xs font-medium text-[#71717a]">
+              Caption or post text
+            </label>
+            <textarea
+              value={postText}
+              onChange={(e) => setPostText(e.target.value)}
+              placeholder="Paste the TikTok caption or video transcript here..."
+              className="min-h-[110px] w-full resize-y rounded-md border border-[#e4e4e7] bg-[#fafafa] px-3 py-2.5 text-sm leading-relaxed text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-colors focus:border-[#0a0a0a] focus:bg-white"
+            />
           </div>
 
-          <div style={styles.controlGroup}>
-            <label style={styles.label}>Goal</label>
-            <select
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              style={styles.select}
-            >
-              <option value="add_value">Add Value</option>
-              <option value="ask_question">Ask Question</option>
-              <option value="share_resource">Share Resource</option>
-              <option value="challenge_assumption">Challenge Assumption</option>
-            </select>
-          </div>
+          {/* Controls */}
+          <div className="flex flex-wrap items-end gap-3 p-5">
+            <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#71717a]">
+                Tone
+              </label>
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className="rounded-md border border-[#e4e4e7] bg-white px-3 py-2 text-sm text-[#0a0a0a] outline-none transition-colors focus:border-[#0a0a0a]"
+              >
+                {TONES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <button
-            onClick={handleGenerate}
-            disabled={loading}
-            style={styles.generateBtn}
-          >
-            {loading ? "⏳ Generating..." : "✨ Generate"}
-          </button>
+            <div className="flex min-w-[140px] flex-1 flex-col gap-1.5">
+              <label className="text-xs font-medium text-[#71717a]">
+                Goal
+              </label>
+              <select
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="rounded-md border border-[#e4e4e7] bg-white px-3 py-2 text-sm text-[#0a0a0a] outline-none transition-colors focus:border-[#0a0a0a]"
+              >
+                {GOALS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="rounded-md bg-[#0a0a0a] px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "Generating…" : "Generate"}
+            </button>
+          </div>
         </div>
 
         {/* Error */}
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div className="mt-4 rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#b91c1c]">
+            {error}
+          </div>
+        )}
 
         {/* Suggestions */}
         {suggestions.length > 0 && (
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Suggestions</h2>
-            <div style={styles.suggestionsList}>
+          <div className="mt-8">
+            <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-[#71717a]">
+              Suggestions
+            </h2>
+            <div className="flex flex-col gap-3">
               {suggestions.map((suggestion, index) => (
-                <div key={index} style={styles.suggestionCard}>
-                  <p style={styles.suggestionText}>{suggestion.text}</p>
-                  <div style={styles.meta}>
-                    <span style={styles.tag}>{suggestion.tone}</span>
-                    <span style={styles.tag}>{suggestion.length}</span>
+                <div
+                  key={index}
+                  className="rounded-xl border border-[#eaeaea] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-colors hover:border-[#d4d4d8]"
+                >
+                  <p className="mb-3 text-sm leading-relaxed text-[#0a0a0a]">
+                    {suggestion.text}
+                  </p>
+                  <div className="mb-3 flex flex-wrap gap-1.5">
+                    <span className="rounded-full bg-[#ecfdf5] px-2.5 py-0.5 text-[11px] font-medium text-[#047857]">
+                      {suggestion.tone}
+                    </span>
+                    <span className="rounded-full bg-[#f4f4f5] px-2.5 py-0.5 text-[11px] font-medium text-[#52525b]">
+                      {suggestion.length}
+                    </span>
                   </div>
                   <button
                     onClick={() => handleCopy(suggestion.text, index)}
-                    style={{
-                      ...styles.copyBtn,
-                      ...(copiedIndex === index ? styles.copyBtnCopied : {}),
-                    }}
+                    className={`w-full rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                      copiedIndex === index
+                        ? "border-[#00d4a0] bg-[#ecfdf5] text-[#047857]"
+                        : "border-[#e4e4e7] bg-white text-[#0a0a0a] hover:bg-[#fafafa]"
+                    }`}
                   >
-                    {copiedIndex === index ? "✓ Copied!" : "📋 Copy"}
+                    {copiedIndex === index ? "Copied" : "Copy"}
                   </button>
                 </div>
               ))}
@@ -172,171 +222,11 @@ export default function TikTokCommentSuggester() {
         )}
 
         {/* Footer */}
-        <div style={styles.footer}>
-          <p>
-            🤝 Review and edit before posting. You must manually paste and post
-            this comment in TikTok.
-          </p>
+        <div className="mt-12 border-t border-[#eaeaea] pt-6 text-center text-xs leading-relaxed text-[#a1a1aa]">
+          Review and edit before posting. You must manually paste and post
+          this comment in TikTok.
         </div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    padding: "20px",
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif',
-  } as React.CSSProperties,
-  wrapper: {
-    maxWidth: "700px",
-    margin: "0 auto",
-    background: "white",
-    borderRadius: "12px",
-    padding: "32px",
-    boxShadow: "0 10px 40px rgba(0, 0, 0, 0.1)",
-  } as React.CSSProperties,
-  header: {
-    marginBottom: "32px",
-    textAlign: "center",
-  } as React.CSSProperties,
-  title: {
-    fontSize: "28px",
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: "8px",
-  } as React.CSSProperties,
-  subtitle: {
-    fontSize: "14px",
-    color: "#666",
-    lineHeight: "1.5",
-  } as React.CSSProperties,
-  section: {
-    marginBottom: "24px",
-  } as React.CSSProperties,
-  sectionTitle: {
-    fontSize: "16px",
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: "16px",
-  } as React.CSSProperties,
-  label: {
-    display: "block",
-    fontSize: "13px",
-    fontWeight: "500",
-    color: "#666",
-    marginBottom: "8px",
-  } as React.CSSProperties,
-  textarea: {
-    width: "100%",
-    minHeight: "120px",
-    padding: "12px",
-    border: "1px solid #ddd",
-    borderRadius: "6px",
-    fontSize: "14px",
-    fontFamily: "inherit",
-    lineHeight: "1.5",
-    resize: "vertical",
-  } as React.CSSProperties,
-  controls: {
-    display: "flex",
-    gap: "12px",
-    marginBottom: "24px",
-    flexWrap: "wrap",
-  } as React.CSSProperties,
-  controlGroup: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "8px",
-    flex: 1,
-    minWidth: "120px",
-  } as React.CSSProperties,
-  select: {
-    padding: "8px 12px",
-    border: "1px solid #ddd",
-    borderRadius: "6px",
-    fontSize: "13px",
-    fontFamily: "inherit",
-    background: "white",
-  } as React.CSSProperties,
-  generateBtn: {
-    padding: "8px 16px",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    color: "white",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "opacity 0.2s",
-    alignSelf: "flex-end",
-  } as React.CSSProperties,
-  error: {
-    background: "#ffebee",
-    border: "1px solid #ef5350",
-    color: "#c62828",
-    padding: "12px",
-    borderRadius: "6px",
-    fontSize: "13px",
-    marginBottom: "24px",
-  } as React.CSSProperties,
-  suggestionsList: {
-    display: "flex",
-    flexDirection: "column" as const,
-    gap: "16px",
-  } as React.CSSProperties,
-  suggestionCard: {
-    border: "1px solid #e0e0e0",
-    borderRadius: "6px",
-    padding: "16px",
-    transition: "all 0.2s",
-  } as React.CSSProperties,
-  suggestionText: {
-    fontSize: "14px",
-    lineHeight: "1.6",
-    color: "#333",
-    marginBottom: "12px",
-  } as React.CSSProperties,
-  meta: {
-    display: "flex",
-    gap: "8px",
-    marginBottom: "12px",
-    flexWrap: "wrap" as const,
-  } as React.CSSProperties,
-  tag: {
-    display: "inline-block",
-    background: "#f0f0f0",
-    padding: "4px 8px",
-    borderRadius: "3px",
-    fontSize: "11px",
-    color: "#666",
-  } as React.CSSProperties,
-  copyBtn: {
-    width: "100%",
-    padding: "8px 12px",
-    background: "white",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "500",
-    transition: "all 0.2s",
-  } as React.CSSProperties,
-  copyBtnCopied: {
-    background: "#e8f5e9",
-    borderColor: "#4caf50",
-    color: "#4caf50",
-  } as React.CSSProperties,
-  footer: {
-    marginTop: "32px",
-    paddingTop: "24px",
-    borderTop: "1px solid #e0e0e0",
-    fontSize: "13px",
-    color: "#666",
-    textAlign: "center" as const,
-    lineHeight: "1.6",
-  } as React.CSSProperties,
-};
