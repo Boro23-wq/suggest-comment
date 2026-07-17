@@ -16,6 +16,9 @@ type AllowedModel = (typeof ALLOWED_MODELS)[number];
 
 const DEFAULT_MODEL: AllowedModel = "gpt-4o-mini";
 
+// Some models (e.g. gpt-5-mini) only support the default temperature (1).
+const FIXED_TEMPERATURE_MODELS = new Set<AllowedModel>(["gpt-5-mini"]);
+
 interface SuggestCommentRequest {
   platform: "linkedin" | "x" | "tiktok";
   postText: string;
@@ -203,8 +206,8 @@ export async function POST(request: NextRequest) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.9, // Slightly higher for variety
-      max_tokens: 1500,
+      ...(FIXED_TEMPERATURE_MODELS.has(model) ? {} : { temperature: 0.9 }), // Slightly higher for variety, where supported
+      max_completion_tokens: 1500,
       response_format: { type: "json_object" }, // Ensures JSON output
     });
 
