@@ -70,6 +70,7 @@ const PLATFORM_META: Record<
 
 export default function CommentSuggester({ platform }: { platform: Platform }) {
   const [postText, setPostText] = useState("");
+  const [conversationContext, setConversationContext] = useState("");
   const [tone, setTone] = useState("insightful");
   const [goal, setGoal] = useState("add_value");
   const [model, setModel] = useState(MODELS[0].value);
@@ -102,6 +103,7 @@ export default function CommentSuggester({ platform }: { platform: Platform }) {
           tone,
           goal,
           model,
+          userContext: conversationContext.trim() || undefined,
         }),
       });
 
@@ -182,6 +184,19 @@ export default function CommentSuggester({ platform }: { platform: Platform }) {
               onChange={(e) => setPostText(e.target.value)}
               placeholder={meta.placeholder}
               className="min-h-[110px] w-full resize-y rounded-md border border-[#e4e4e7] bg-[#fafafa] px-3 py-2.5 text-sm leading-relaxed text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-colors focus:border-[#0a0a0a] focus:bg-white"
+            />
+          </div>
+
+          {/* Conversation context */}
+          <div className="border-b border-[#eaeaea] p-5">
+            <label className="mb-2 block text-xs font-medium text-[#71717a]">
+              Conversation context (optional)
+            </label>
+            <textarea
+              value={conversationContext}
+              onChange={(e) => setConversationContext(e.target.value)}
+              placeholder="Replying to a reply on your own comment? Paste the thread so far (your comment, their reply) so suggestions stay on-topic."
+              className="min-h-[70px] w-full resize-y rounded-md border border-[#e4e4e7] bg-[#fafafa] px-3 py-2.5 text-sm leading-relaxed text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-colors focus:border-[#0a0a0a] focus:bg-white"
             />
           </div>
 

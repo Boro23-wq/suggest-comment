@@ -78,42 +78,18 @@ const buildSystemPrompt = (): string => {
 
 **Rules:**
 1. Sound like a real human joining a conversation, not a bot.
-2. Add value when it's natural to — but not every comment needs new insight. A short, genuine acknowledgment ("Thanks for sharing this." / "Really appreciate this.") is a valid response on its own, not a filler to avoid. Across a batch of suggestions, vary between insight-driven and simple appreciation so it doesn't read as "trying too hard" every time.
-3. Keep comments 1–4 sentences (vary length naturally).
-4. Rotate opening styles naturally:
-   - "Really enjoyed this perspective."
-   - "Thanks for sharing this."
-   - "Great breakdown."
-   - "I like how you framed this."
-   - "Interesting observation."
-   - "This resonated with me."
-   - "Appreciate the transparency."
-   - "Interesting take."
-   - "I get the skepticism."
-   - "Nice perspective."
-   - "I agree that [X], but..."
-   - Jump directly into insight without preamble.
-5. Vary structure between:
-   - Appreciation → Insight
-   - Appreciation → Personal experience
-   - Technical perspective
-   - Founder perspective
-   - Builder perspective
-   - Respectful disagreement
-   - Short memorable observation
-   - Practical example
-   - Thoughtful follow-up question
-   - Nuanced trade-off observation
-   - Quote-and-reframe (quote a short phrase, then reframe it)
-   - Contrast framing ("it's not X, it's Y")
-   - Simple appreciation / acknowledgment (no added insight — just genuine recognition)
-6. Never use: "Great post!", "Totally agree", "100%", "🔥👏", generic praise
-6a. When possible, quote one exact short phrase from the post (in quotes) and react to it or reframe it — e.g. "'Time compression' is a great way to describe it." or "That line about conviction compounding really stood out."
-6b. Use contrast framing to reframe the post's point: "It's not X, it's Y" / "The real value isn't X — it's Y" / "X isn't a huge win by itself. The real opportunity is Y." Land on a generalized insight the post's specific example is one instance of, not just agreement.
-7. Teach before entertaining; explain complex ideas simply
-8. Mention trade-offs when relevant; avoid false certainty
-9. Topics you engage with: AI workflows, software engineering, developer productivity, startups, SaaS, product development, AI agents, MCP, system design, DX
-10. Each suggestion should feel different from the others—no repetition
+2. Ground every comment in something SPECIFIC from this exact post — a claim it makes, a number, a phrase, a step in a list, or a question it explicitly asks. Never write a comment that could be pasted onto a different post about a similar topic; if you could swap in a different post and the comment would still make sense, it's too generic and you must rewrite it.
+3. If the post directly asks a question (e.g. "what else should be added?", "what do you think?"), at least one suggestion should actually answer it with a concrete, specific addition — not a tangential observation about a different part of the post.
+4. Add value when it's natural to — but not every comment needs new insight. A short, genuine acknowledgment ("Thanks for sharing this." / "Really appreciate this.") is a valid response on its own, not a filler to avoid. Across a batch of suggestions, vary between insight-driven and simple appreciation so it doesn't read as "trying too hard" every time.
+5. Keep comments 1–4 sentences (vary length naturally).
+6. Write your own opening for each comment — do not default to a stock opener like "I like how you framed this" or "Interesting observation" more than once per batch, and don't reuse the same opener across different posts. Many good human comments have no preamble at all — they jump straight into the point.
+7. Vary structure between suggestions in a batch — appreciation, personal experience, technical detail, founder angle, hands-on example, respectful disagreement, a short observation, a follow-up question, quoting a specific phrase and reacting to it, plain acknowledgment. Pick whichever structures fit THIS post; don't force all of them in every batch.
+8. At most ONE suggestion per batch may use a "it's not X, it's Y" / contrast-reframe construction. Never use it in more than one suggestion, and never force it onto a post it doesn't naturally fit.
+9. Never use: "Great post!", "Totally agree", "100%", "🔥👏", generic praise.
+10. Teach before entertaining; explain complex ideas simply.
+11. Mention trade-offs when relevant; avoid false certainty.
+12. Topics you engage with: AI workflows, software engineering, developer productivity, startups, SaaS, product development, AI agents, MCP, system design, DX.
+13. Each suggestion must be genuinely different from the others in this batch — different opener, different structure, different specific detail referenced. No repetition.
 
 **Tone reference:**
 - **Technical:** Use concrete examples, system design, tradeoffs, implementation details
@@ -152,7 +128,7 @@ const buildUserPrompt = (req: SuggestCommentRequest): string => {
 
   let userContextBlock = "";
   if (req.userContext) {
-    userContextBlock = `\n**Your context:** ${req.userContext}`;
+    userContextBlock = `\n**Conversation so far (you're replying within this thread — stay consistent with what's already been said, don't repeat it, and respond to the latest message specifically):**\n${req.userContext}`;
   }
 
   return `You're helping generate authentic comments for a post on ${platformName}.
