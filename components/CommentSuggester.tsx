@@ -28,6 +28,9 @@ const TONES = [
   { value: "builder", label: "Builder" },
   { value: "question", label: "Question" },
   { value: "appreciative", label: "Appreciative (no insight, just thanks)" },
+  { value: "casual", label: "Casual / witty" },
+  { value: "skeptical", label: "Skeptical / critical" },
+  { value: "personal_story", label: "Personal story (only from real context)" },
 ];
 
 const MODELS = [
@@ -42,6 +45,8 @@ const GOALS = [
   { value: "ask_question", label: "Ask a question" },
   { value: "share_resource", label: "Share a resource" },
   { value: "challenge_assumption", label: "Challenge an assumption" },
+  { value: "relate", label: "Relate / connect" },
+  { value: "network", label: "Network / visibility" },
 ];
 
 const PLATFORM_META: Record<
