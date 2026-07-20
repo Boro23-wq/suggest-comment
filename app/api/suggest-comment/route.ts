@@ -1,27 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { GoogleGenAI, Type, ApiError } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+// Pinned dated models (e.g. gemini-2.5-flash) get sunset for new API keys as
+// Google ships newer generations, so use the "-latest" aliases Google
+// maintains to always point at the current recommended model per tier.
 export const ALLOWED_MODELS = [
-  "gpt-4o-mini",
-  "gpt-4.1-mini",
-  "gpt-5-mini",
-  "gpt-5.4",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
+  "gemini-pro-latest",
 ] as const;
 
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
 
-const DEFAULT_MODEL: AllowedModel = "gpt-5-mini";
+const DEFAULT_MODEL: AllowedModel = "gemini-flash-latest";
 
-// Reasoning models (e.g. gpt-5-mini) only support the default temperature (1),
-// and spend part of their completion-token budget on internal reasoning before
-// writing any output — so they need a larger token budget and a low reasoning
-// effort, or a long system prompt can burn the whole budget on reasoning and
-// return an empty response.
-const REASONING_MODELS = new Set<AllowedModel>(["gpt-5-mini"]);
+// This is a short creative-writing task, not multi-step reasoning, so keep
+// the thinking budget low/off — flash-lite gets none, flash/pro get a small
+// budget so they can still vary structure across the 5 suggestions.
+const THINKING_BUDGETS: Record<AllowedModel, number> = {
+  "gemini-flash-lite-latest": 0,
+  "gemini-flash-latest": 512,
+  "gemini-pro-latest": 512,
+};
 
 interface SuggestCommentRequest {
   platform: "linkedin" | "x" | "tiktok";
@@ -80,12 +82,12 @@ const buildSystemPrompt = (): string => {
 **Persona:** Software engineer → founder. Interests: AI, SaaS, startups, developer tools, React, Next.js, TypeScript, product building. Natural, conversational, confident, curious. Never arrogant, preachy, or hype-driven. Prioritize credibility over virality.
 
 **Hard rules (never break these):**
-1. NEVER invent a specific first-person anecdote, project, or claim of experience ("when we built X", "I kept a Y script", "we solved this by...") unless that exact detail was actually given to you in the "Thread context" block below. You have no real projects or history — inventing one means the user would be posting a lie under their name. Frame hands-on-sounding ideas as a general principle instead ("a small checklist script for hard failures would catch a lot of this"), not a fabricated personal story.
+1. NEVER invent a specific first-person anecdote, project, or claim of experience unless that exact detail was actually given to you in the "Thread context" block below. This includes explicit claims ("when we built X", "I kept a Y script", "we solved this by...") AND elliptical/implied-subject ones with the "I" dropped but still clearly a personal claim ("Spent days chasing that bug before", "Dealt with this exact issue last year", "Ran into that constantly"). If it reads as something that happened to you specifically, and it wasn't given in context, it's a fabrication — you have no real projects or history, and inventing one means the user would be posting a lie under their name. Frame hands-on-sounding ideas as a general, third-person-observable principle instead ("a small checklist script for hard failures would catch a lot of this", "that pattern usually shows up when..."), not a fabricated personal story in any grammatical form.
 2. You are a peer replying in the thread, not a consultant. Don't prescribe next steps, checklists, or numbered action plans to the poster unless they explicitly asked for suggestions or the goal is "ask_question"/"challenge_assumption". A comment that reads like a mini action plan for someone else's business is a bot tell.
 3. Ground every comment in something SPECIFIC from this exact post — a claim, number, phrase, or question it explicitly asks. If the comment could be pasted onto a different post on a similar topic and still make sense, it's too generic — rewrite it.
 4. Each of the 5 suggestions must be genuinely different: different opener, different structure, different specific detail referenced, and no two converging on the same recommendation or example.
 5. Avoid the em dash ("—") unless truly nothing else works — treat this as a hard requirement, not a soft preference. If you catch yourself about to write "—", stop and rewrite the clause with a period, comma, or "and"/"but" instead.
-6. At most ONE suggestion per batch may use a mirrored two-sided contrast construction — this includes "it's not X, it's Y" AND the broader pattern of "A does/needs P while/whereas B does/needs Q" or "one optimizes X, the other optimizes Y". When a post itself frames two things against each other (e.g. comparing two tools), you'll be tempted to mirror that structure in most of your suggestions — resist it. Only one suggestion may take the comparison angle at all; the other four must react some other way (a specific detail, a question, a disagreement, an acknowledgment, a related but non-parallel observation).
+6. At most ONE suggestion per batch may use a mirrored two-sided contrast construction. This construction is any sentence shaped like "A [verb] P, [while/whereas/but/and] B [verb] Q" or "one [does/is] X, the other [does/is] Y" — regardless of the exact connector word ("while", "whereas", "than", "but", "and yet", or no connector at all, just two clauses in parallel grammatical shape). Before finalizing your 5 suggestions, silently check each one against this definition and count the matches; if more than one matches, rewrite all but one of them into a non-parallel form (a specific detail about only ONE side, a question, a disagreement, plain acknowledgment). This rule applies with extra force when the post itself compares two things (e.g. two tools, two options) — that's exactly when you'll be pulled toward writing all 5 suggestions in this shape, and exactly when you must resist it hardest. 4 of your 5 suggestions must NOT be structured as a comparison between the two things at all — they should each engage with just one detail, angle, or side of the post.
 
 **Style:**
 - Contractions always ("it's", "we're", "won't"). Plain, direct phrasing over formal connectives ("which can lead to", "in order to").
@@ -166,6 +168,38 @@ Return a JSON object matching this schema, and nothing else:
 }`;
 };
 
+const TONE_VALUES = [
+  "technical",
+  "founder",
+  "builder",
+  "insightful",
+  "question",
+  "appreciative",
+  "casual",
+  "skeptical",
+  "personal_story",
+] as const;
+
+const responseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    suggestions: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          text: { type: Type.STRING },
+          tone: { type: Type.STRING, enum: [...TONE_VALUES] },
+          structure: { type: Type.STRING },
+          length: { type: Type.STRING, enum: ["short", "medium", "long"] },
+        },
+        required: ["text", "tone", "structure", "length"],
+      },
+    },
+  },
+  required: ["suggestions"],
+};
+
 export async function POST(request: NextRequest) {
   try {
     const body: SuggestCommentRequest = await request.json();
@@ -204,27 +238,22 @@ export async function POST(request: NextRequest) {
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(body);
 
-    const isReasoningModel = REASONING_MODELS.has(model);
-
-    // Call OpenAI API
-    const response = await openai.chat.completions.create({
+    // Call Gemini
+    const response = await ai.models.generateContent({
       model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      ...(isReasoningModel ? {} : { temperature: 0.9 }), // Slightly higher for variety, where supported
-      // Reasoning models spend part of the budget on internal reasoning
-      // before writing output, so give them more room and keep reasoning
-      // effort low — otherwise a long prompt can exhaust the budget on
-      // reasoning alone and return an empty response.
-      max_completion_tokens: isReasoningModel ? 3000 : 1500,
-      ...(isReasoningModel ? { reasoning_effort: "low" } : {}),
-      response_format: { type: "json_object" }, // Ensures JSON output
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema,
+        temperature: 0.9, // Slightly higher for variety
+        maxOutputTokens: 3000,
+        thinkingConfig: { thinkingBudget: THINKING_BUDGETS[model] },
+      },
     });
 
     // Parse the response
-    const content = response.choices[0].message.content;
+    const content = response.text;
     if (!content) {
       return NextResponse.json(
         { error: "No response from LLM" },
@@ -255,8 +284,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error in suggest-comment API:", error);
     const message =
-      error instanceof OpenAI.APIError
-        ? `OpenAI API error: ${error.message}`
+      error instanceof ApiError
+        ? `Gemini API error: ${error.message}`
         : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

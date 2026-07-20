@@ -21,6 +21,8 @@ interface ApiResponse {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://suggest-comment.vercel.app";
 
+// Duplicated in ~/Desktop/chrome-extension/popup.html (#tone, #goal, #model <select> options)
+// and app/api/suggest-comment/route.ts (tone/goal unions, ALLOWED_MODELS). Keep all in sync.
 const TONES = [
   { value: "insightful", label: "Insightful" },
   { value: "technical", label: "Technical" },
@@ -34,10 +36,9 @@ const TONES = [
 ];
 
 const MODELS = [
-  { value: "gpt-5-mini", label: "GPT-5 mini (default)" },
-  { value: "gpt-5.4", label: "GPT-5.4 (best quality)" },
-  { value: "gpt-4o-mini", label: "GPT-4o mini (fastest, cheapest)" },
-  { value: "gpt-4.1-mini", label: "GPT-4.1 mini" },
+  { value: "gemini-flash-latest", label: "Gemini Flash (default)" },
+  { value: "gemini-pro-latest", label: "Gemini Pro (best quality)" },
+  { value: "gemini-flash-lite-latest", label: "Gemini Flash-Lite (fastest, cheapest)" },
 ];
 
 const GOALS = [
