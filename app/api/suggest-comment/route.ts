@@ -38,7 +38,11 @@ interface SuggestCommentRequest {
     | "appreciative"
     | "casual"
     | "skeptical"
-    | "personal_story";
+    | "personal_story"
+    | "solidarity"
+    | "head_nod"
+    | "gut_reaction"
+    | "hot_take";
   goal?:
     | "add_value"
     | "ask_question"
@@ -61,7 +65,11 @@ interface CommentSuggestion {
     | "appreciative"
     | "casual"
     | "skeptical"
-    | "personal_story";
+    | "personal_story"
+    | "solidarity"
+    | "head_nod"
+    | "gut_reaction"
+    | "hot_take";
   structure: string;
   length: "short" | "medium" | "long";
 }
@@ -88,6 +96,12 @@ const buildSystemPrompt = (): string => {
 4. Each of the 5 suggestions must be genuinely different: different opener, different structure, different specific detail referenced, and no two converging on the same recommendation or example.
 5. Avoid the em dash ("—") unless truly nothing else works — treat this as a hard requirement, not a soft preference. If you catch yourself about to write "—", stop and rewrite the clause with a period, comma, or "and"/"but" instead.
 6. At most ONE suggestion per batch may use a mirrored two-sided contrast construction. This construction is any sentence shaped like "A [verb] P, [while/whereas/but/and] B [verb] Q" or "one [does/is] X, the other [does/is] Y" — regardless of the exact connector word ("while", "whereas", "than", "but", "and yet", or no connector at all, just two clauses in parallel grammatical shape). Before finalizing your 5 suggestions, silently check each one against this definition and count the matches; if more than one matches, rewrite all but one of them into a non-parallel form (a specific detail about only ONE side, a question, a disagreement, plain acknowledgment). This rule applies with extra force when the post itself compares two things (e.g. two tools, two options) — that's exactly when you'll be pulled toward writing all 5 suggestions in this shape, and exactly when you must resist it hardest. 4 of your 5 suggestions must NOT be structured as a comparison between the two things at all — they should each engage with just one detail, angle, or side of the post.
+7. Avoid "meta-analysis framing" — never open with, or otherwise use, phrases that talk about the post as an artifact rather than engaging with its actual subject: "This highlights...", "This is a great breakdown of...", "What I love about this is...", "It's interesting how...", "It's interesting to see...", "Great point about...". A real person responds to the IDEA or CLAIM, not to the existence of the post making it. If you catch yourself writing a sentence whose subject is "this post" / "this" / "what you said" rather than the actual topic, rewrite it to talk about the topic directly.
+8. Not every comment needs to be an insight or a take. Real replies are often just a quick reaction, a one-line joke, quiet agreement, or solidarity with a pain point — with zero analysis attached. Lean on the low-effort tones below (solidarity, head_nod, gut_reaction, hot_take, casual) across a batch so it doesn't read as 5 mini-essays.
+9. Calibrate to the platform:
+   - **LinkedIn:** grounded, professional peer-to-peer. 1–3 sentences, still human, no corporate voice.
+   - **X:** punchy, casual, direct. Sentence fragments and lowercase openers are fine.
+   - **TikTok:** extremely casual, short, deadpan or funny is welcome. No formal business register.
 
 **Style:**
 - Contractions always ("it's", "we're", "won't"). Plain, direct phrasing over formal connectives ("which can lead to", "in order to").
@@ -99,12 +113,16 @@ const buildSystemPrompt = (): string => {
 - **Technical:** concrete examples, system design, tradeoffs, implementation details
 - **Founder:** business, customer problems, scaling, long-term thinking
 - **Builder:** practical, hands-on-sounding — general advice per rule 1, never a fabricated personal story
-- **Insightful:** step back, connect dots, challenge assumptions
+- **Insightful:** step back, connect dots, challenge assumptions — but never via meta-analysis framing (rule 7); the insight is about the topic, not a review of the post
 - **Question:** push the conversation forward
 - **Appreciative:** acknowledge and thank only — no insight, advice, or analysis tacked on
-- **Casual:** short, witty, low-effort reaction — a quick joke or one-liner, not an analysis. Confident, not try-hard.
+- **Casual:** short, witty, low-effort reaction — a quick joke, deadpan one-liner, or dry aside, not an analysis. Confident, not try-hard.
 - **Skeptical:** raise a real concern or counterpoint about the post's claim itself — distinct from "challenge_assumption" goal, which is about the underlying premise; this tone is about tone/delivery, so it can pair with any goal.
 - **Personal story:** only usable when the "Thread context" block actually supplies a real detail about you — otherwise fall back to a general principle per rule 1. Never invent the story.
+- **Solidarity:** empathize with a shared pain or frustration in the post without trying to fix it or add insight ("Felt this in my soul.", "The 5pm log-diving pain is real.").
+- **Head nod:** a brief co-sign or agreement, no hot take, no advice tacked on ("Saving this for Monday.", "Honestly, fair point.").
+- **Gut reaction:** an immediate, unpolished 1-sentence reaction to a specific stat or claim in the post — reaction, not analysis ("40ms feels steep, but half the error rate is worth it.").
+- **Hot take:** a blunt, casual personal opinion stated without a justifying essay behind it — can be mildly provocative, not mean-spirited.
 
 **Goal reference (in addition to the obvious ones):**
 - **Relate/connect:** find genuine common ground or shared experience with the poster — again, only real if it draws on actual supplied context; otherwise phrase it as relating to the idea, not a fabricated shared history.
@@ -113,21 +131,31 @@ const buildSystemPrompt = (): string => {
 The examples in the user message show the calibration you're aiming for. Match that register, not a script.`;
 };
 
-const FEW_SHOT_EXAMPLES = `### Example 1 ###
+const FEW_SHOT_EXAMPLES = `### Example 1 (LinkedIn) ###
 Post: "We cut onboarding from 10 steps to 3 and activation doubled."
 Good suggestions:
-- "Cutting steps almost always beats redesigning them. curious what got dropped, was it stuff you didn't actually need to collect?"
-- "That's a big jump for a small change. simplifying the funnel usually beats adding more guidance on top of it."
-- "Really appreciate you sharing the actual before/after number, most onboarding posts skip that part."
+- "Cutting steps almost always beats redesigning them. curious what got dropped, was it stuff you didn't actually need to collect?" [question]
+- "That's a big jump for a small change. simplifying the funnel usually beats adding more guidance on top of it." [insightful]
+- "Really appreciate you sharing the actual before/after number, most onboarding posts skip that part." [appreciative]
+- "Honestly, doubling activation by deleting 7 fields is a huge win." [head_nod]
 
-### Example 2 ###
+### Example 2 (X) ###
 Post: "Shipped a change this week that adds 40ms of latency but cuts our error rate in half. Worth it."
 Good suggestions:
-- "Depends what was driving the errors. if it was flaky retries, that latency trade is almost always worth it."
-- "40ms is barely noticeable to users but a 2x drop in errors compounds into way fewer support tickets down the line."
-- "What was actually causing the errors before this change?"
+- "depends what was driving the errors. if it was flaky retries, that latency trade is almost always worth it." [technical]
+- "40ms is barely noticeable to users but a 2x drop in errors compounds into way fewer support tickets down the line." [gut_reaction]
+- "what was actually causing the errors before this change?" [question]
+- "tell that to whoever's on call this weekend" [casual]
 
-Notice: no fabricated personal projects, no "we built..." claims, no unsolicited advice/checklists for the poster, no em dashes, short and specific to the post.`;
+### Example 3 (TikTok) ###
+Post: "My code worked on the first try today and now I don't trust it."
+Good suggestions:
+- "That's when you know the real bug is still coming." [solidarity]
+- "Time to go write 50 console logs just to be sure." [casual]
+- "Honestly fair, first-try code is cursed." [head_nod]
+- "Most bugs like this are just untested edge cases hiding for later." [hot_take]
+
+Notice: no fabricated personal projects, no "we built..." claims, no unsolicited advice/checklists for the poster, no em dashes, no "this highlights"/"what I love about this" meta-framing, short and specific to the post, register shifts with platform (LinkedIn more grounded, X punchier and lowercase-friendly, TikTok loosest).`;
 
 // Build the user prompt
 const buildUserPrompt = (req: SuggestCommentRequest): string => {
@@ -153,19 +181,7 @@ You're generating comments for a post on ${platformName}.
 
 **Preferred tone:** ${tone}${userContextBlock}
 
-Generate 5 unique, authentic comments matching the calibration shown in the examples above. Vary structure and opening; feel natural and conversational; 1–4 sentences each.
-
-Return a JSON object matching this schema, and nothing else:
-{
-  "suggestions": [
-    {
-      "text": "...",
-      "tone": "technical|founder|builder|insightful|question|appreciative|casual|skeptical|personal_story",
-      "structure": "appreciation_insight|technical_perspective|question|observation|etc",
-      "length": "short|medium|long"
-    }
-  ]
-}`;
+Generate 5 unique, authentic comments matching the calibration shown in the examples above, calibrated to ${platformName}'s register per rule 9. Vary structure, opening, and effort level; feel natural and conversational; 1–4 sentences each.`;
 };
 
 const TONE_VALUES = [
@@ -178,6 +194,10 @@ const TONE_VALUES = [
   "casual",
   "skeptical",
   "personal_story",
+  "solidarity",
+  "head_nod",
+  "gut_reaction",
+  "hot_take",
 ] as const;
 
 const responseSchema = {

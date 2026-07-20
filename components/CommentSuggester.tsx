@@ -33,6 +33,10 @@ const TONES = [
   { value: "casual", label: "Casual / witty" },
   { value: "skeptical", label: "Skeptical / critical" },
   { value: "personal_story", label: "Personal story (only from real context)" },
+  { value: "solidarity", label: "Solidarity (shared pain, no fix)" },
+  { value: "head_nod", label: "Head nod (simple co-sign)" },
+  { value: "gut_reaction", label: "Gut reaction (quick take on a stat)" },
+  { value: "hot_take", label: "Hot take (blunt opinion)" },
 ];
 
 const MODELS = [
