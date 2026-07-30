@@ -14,13 +14,14 @@ export const ALLOWED_MODELS = [
 
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
 
-const DEFAULT_MODEL: AllowedModel = "gemini-flash-latest";
+const DEFAULT_MODEL: AllowedModel = "gemini-flash-lite-latest";
 
 // This is a short creative-writing task, not multi-step reasoning, so keep
-// the thinking budget low/off — flash-lite gets none, flash/pro get a small
-// budget so they can still vary structure across the 5 suggestions.
+// the thinking budget low/off — flash-lite gets the minimum (0 is rejected
+// by the API as an invalid argument for this model), flash/pro get a small
+// budget so they can still vary structure across the batch.
 const THINKING_BUDGETS: Record<AllowedModel, number> = {
-  "gemini-flash-lite-latest": 0,
+  "gemini-flash-lite-latest": 1,
   "gemini-flash-latest": 512,
   "gemini-pro-latest": 512,
 };
@@ -93,11 +94,11 @@ const buildSystemPrompt = (): string => {
 1. NEVER invent a specific first-person anecdote, project, or claim of experience unless that exact detail was actually given to you in the "Thread context" block below. This includes explicit claims ("when we built X", "I kept a Y script", "we solved this by...") AND elliptical/implied-subject ones with the "I" dropped but still clearly a personal claim ("Spent days chasing that bug before", "Dealt with this exact issue last year", "Ran into that constantly"). If it reads as something that happened to you specifically, and it wasn't given in context, it's a fabrication — you have no real projects or history, and inventing one means the user would be posting a lie under their name. Frame hands-on-sounding ideas as a general, third-person-observable principle instead ("a small checklist script for hard failures would catch a lot of this", "that pattern usually shows up when..."), not a fabricated personal story in any grammatical form.
 2. You are a peer replying in the thread, not a consultant. Don't prescribe next steps, checklists, or numbered action plans to the poster unless they explicitly asked for suggestions or the goal is "ask_question"/"challenge_assumption". A comment that reads like a mini action plan for someone else's business is a bot tell.
 3. Ground every comment in something SPECIFIC from this exact post — a claim, number, phrase, or question it explicitly asks. If the comment could be pasted onto a different post on a similar topic and still make sense, it's too generic — rewrite it.
-4. Each of the 5 suggestions must be genuinely different: different opener, different structure, different specific detail referenced, and no two converging on the same recommendation or example.
+4. Each suggestion in the batch must be genuinely different: different opener, different structure, different specific detail referenced, and no two converging on the same recommendation or example.
 5. Avoid the em dash ("—") unless truly nothing else works — treat this as a hard requirement, not a soft preference. If you catch yourself about to write "—", stop and rewrite the clause with a period, comma, or "and"/"but" instead.
-6. At most ONE suggestion per batch may use a mirrored two-sided contrast construction. This construction is any sentence shaped like "A [verb] P, [while/whereas/but/and] B [verb] Q" or "one [does/is] X, the other [does/is] Y" — regardless of the exact connector word ("while", "whereas", "than", "but", "and yet", or no connector at all, just two clauses in parallel grammatical shape). Before finalizing your 5 suggestions, silently check each one against this definition and count the matches; if more than one matches, rewrite all but one of them into a non-parallel form (a specific detail about only ONE side, a question, a disagreement, plain acknowledgment). This rule applies with extra force when the post itself compares two things (e.g. two tools, two options) — that's exactly when you'll be pulled toward writing all 5 suggestions in this shape, and exactly when you must resist it hardest. 4 of your 5 suggestions must NOT be structured as a comparison between the two things at all — they should each engage with just one detail, angle, or side of the post.
+6. At most ONE suggestion per batch may use a mirrored two-sided contrast construction. This construction is any sentence shaped like "A [verb] P, [while/whereas/but/and] B [verb] Q" or "one [does/is] X, the other [does/is] Y" — regardless of the exact connector word ("while", "whereas", "than", "but", "and yet", or no connector at all, just two clauses in parallel grammatical shape). Before finalizing your suggestions, silently check each one against this definition and count the matches; if more than one matches, rewrite all but one of them into a non-parallel form (a specific detail about only ONE side, a question, a disagreement, plain acknowledgment). This rule applies with extra force when the post itself compares two things (e.g. two tools, two options) — that's exactly when you'll be pulled toward writing every suggestion in this shape, and exactly when you must resist it hardest. At most one suggestion in the whole batch may be structured as a comparison between the two things; every other one should each engage with just one detail, angle, or side of the post.
 7. Avoid "meta-analysis framing" — never open with, or otherwise use, phrases that talk about the post as an artifact rather than engaging with its actual subject: "This highlights...", "This is a great breakdown of...", "What I love about this is...", "It's interesting how...", "It's interesting to see...", "Great point about...". A real person responds to the IDEA or CLAIM, not to the existence of the post making it. If you catch yourself writing a sentence whose subject is "this post" / "this" / "what you said" rather than the actual topic, rewrite it to talk about the topic directly.
-8. Not every comment needs to be an insight or a take. Real replies are often just a quick reaction, a one-line joke, quiet agreement, or solidarity with a pain point — with zero analysis attached. Lean on the low-effort tones below (solidarity, head_nod, gut_reaction, hot_take, casual) across a batch so it doesn't read as 5 mini-essays.
+8. Not every comment needs to be an insight or a take. Real replies are often just a quick reaction, a one-line joke, quiet agreement, or solidarity with a pain point — with zero analysis attached. Lean on the low-effort tones below (solidarity, head_nod, gut_reaction, hot_take, casual) across a batch so it doesn't read as a stack of mini-essays.
 9. Calibrate to the platform:
    - **LinkedIn:** grounded, professional peer-to-peer. 1–3 sentences, still human, no corporate voice.
    - **X:** punchy, casual, direct. Sentence fragments and lowercase openers are fine.
@@ -157,12 +158,43 @@ Good suggestions:
 
 Notice: no fabricated personal projects, no "we built..." claims, no unsolicited advice/checklists for the poster, no em dashes, no "this highlights"/"what I love about this" meta-framing, short and specific to the post, register shifts with platform (LinkedIn more grounded, X punchier and lowercase-friendly, TikTok loosest).`;
 
+// When both tone and goal are left unset (the UI's "Default" option), skip
+// the single tone/goal hint and instead pin an explicit mix of tone+goal
+// pairs, one per suggestion, so every batch reliably covers a spread of
+// effort levels instead of leaning all-insight (per rule 8).
+const DEFAULT_MIX: { tone: NonNullable<SuggestCommentRequest["tone"]>; goal: NonNullable<SuggestCommentRequest["goal"]> }[] = [
+  { tone: "insightful", goal: "add_value" },
+  { tone: "insightful", goal: "add_value" },
+  { tone: "insightful", goal: "add_value" },
+  { tone: "appreciative", goal: "add_value" },
+  { tone: "head_nod", goal: "add_value" },
+  { tone: "solidarity", goal: "relate" },
+  { tone: "question", goal: "challenge_assumption" },
+];
+
+const isDefaultMix = (req: SuggestCommentRequest): boolean =>
+  !req.tone && !req.goal;
+
+const getSuggestionCount = (req: SuggestCommentRequest): number =>
+  isDefaultMix(req) ? DEFAULT_MIX.length : 5;
+
 // Build the user prompt
 const buildUserPrompt = (req: SuggestCommentRequest): string => {
   const platformName =
     req.platform.charAt(0).toUpperCase() + req.platform.slice(1);
-  const tone = req.tone || "insightful";
-  const goal = req.goal || "add_value";
+
+  let guidanceBlock: string;
+  const count = getSuggestionCount(req);
+
+  if (isDefaultMix(req)) {
+    guidanceBlock = `**Suggestion mix (generate exactly ${count} comments, one per pair below, in this order):**\n${DEFAULT_MIX.map(
+      (m, i) => `${i + 1}. Tone: ${m.tone} — Goal: ${m.goal}`,
+    ).join("\n")}`;
+  } else {
+    const tone = req.tone || "insightful";
+    const goal = req.goal || "add_value";
+    guidanceBlock = `**Your goal:** ${goal}\n\n**Preferred tone:** ${tone}`;
+  }
 
   let userContextBlock = "";
   if (req.userContext) {
@@ -177,11 +209,9 @@ You're generating comments for a post on ${platformName}.
 **Post text:**
 "${req.postText}"
 
-**Your goal:** ${goal}
+${guidanceBlock}${userContextBlock}
 
-**Preferred tone:** ${tone}${userContextBlock}
-
-Generate 5 unique, authentic comments matching the calibration shown in the examples above, calibrated to ${platformName}'s register per rule 9. Vary structure, opening, and effort level; feel natural and conversational; 1–4 sentences each.`;
+Generate ${count} unique, authentic comments matching the calibration shown in the examples above, calibrated to ${platformName}'s register per rule 9. Vary structure, opening, and effort level; feel natural and conversational; 1–4 sentences each.`;
 };
 
 const TONE_VALUES = [
@@ -267,7 +297,7 @@ export async function POST(request: NextRequest) {
         responseMimeType: "application/json",
         responseSchema,
         temperature: 0.9, // Slightly higher for variety
-        maxOutputTokens: 3000,
+        maxOutputTokens: 600 * getSuggestionCount(body),
         thinkingConfig: { thinkingBudget: THINKING_BUDGETS[model] },
       },
     });

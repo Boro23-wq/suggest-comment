@@ -24,6 +24,7 @@ const API_BASE_URL =
 // Duplicated in ~/Desktop/chrome-extension/popup.html (#tone, #goal, #model <select> options)
 // and app/api/suggest-comment/route.ts (tone/goal unions, ALLOWED_MODELS). Keep all in sync.
 const TONES = [
+  { value: "", label: "Default (recommended mix)" },
   { value: "insightful", label: "Insightful" },
   { value: "technical", label: "Technical" },
   { value: "founder", label: "Founder" },
@@ -40,12 +41,13 @@ const TONES = [
 ];
 
 const MODELS = [
-  { value: "gemini-flash-latest", label: "Gemini Flash (default)" },
+  { value: "gemini-flash-lite-latest", label: "Gemini Flash-Lite (default, fastest & cheapest)" },
+  { value: "gemini-flash-latest", label: "Gemini Flash" },
   { value: "gemini-pro-latest", label: "Gemini Pro (best quality)" },
-  { value: "gemini-flash-lite-latest", label: "Gemini Flash-Lite (fastest, cheapest)" },
 ];
 
 const GOALS = [
+  { value: "", label: "Default (recommended mix)" },
   { value: "add_value", label: "Add value" },
   { value: "ask_question", label: "Ask a question" },
   { value: "share_resource", label: "Share a resource" },
@@ -81,8 +83,8 @@ const PLATFORM_META: Record<
 export default function CommentSuggester({ platform }: { platform: Platform }) {
   const [postText, setPostText] = useState("");
   const [conversationContext, setConversationContext] = useState("");
-  const [tone, setTone] = useState("insightful");
-  const [goal, setGoal] = useState("add_value");
+  const [tone, setTone] = useState("");
+  const [goal, setGoal] = useState("");
   const [model, setModel] = useState(MODELS[0].value);
   const [suggestions, setSuggestions] = useState<CommentSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
